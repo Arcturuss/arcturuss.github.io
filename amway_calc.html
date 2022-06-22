@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <style>
+        table td,
+        table th {
+            padding: 2px 5px;
+            border: 1px solid gray;
+            border-width: 1px 0px 0 1px;
+            width: 4em;
+            min-width: 4em;
+        }
+
+        table td,
+        table td input {
+            text-align: right;
+        }
+
+        .kurs input {
+            width: 5em;
+        }
+
+        table td .id,
+        table td .id input,
+        table td .name,
+        table td .name input {
+            text-align: left;
+        }
+
+        table tfoot td {
+            min-height: 20px;
+            height: 20px;
+            /* border-width: 1px 0px 0px 0px; */
+        }
+
+        table input,
+        table input:focus-visible {
+            width: 100%;
+            max-width: 100%;
+            border: none;
+            outline: none;
+        }
+
+        table .id {
+            max-width: 5em;
+        }
+
+        table .name {
+            width: 20em;
+            max-width: 20em;
+            min-width: 20em;
+        }
+
+        table .count {
+            width: 2.5em;
+            min-width: 2.5em;
+        }
+
+        /* background */
+        table .id,
+        table .name,
+        table .count,
+        table .price_kzt,
+        table .pv,
+        table .id input,
+        table .name input,
+        table .count input,
+        table .price_kzt input,
+        table .pv input {
+            background: #eeffee;
+        }
+
+        table#calc_table tfoot td {
+            background: #fff;
+            border-width: 1px 0 0 0;
+            font-weight: bold;
+        }
+
+        table .sum_all, table .last {
+            border-width: 1px 1px 0 1px;
+        }
+
+        table tfoot .sum_all {
+            border-width: 1px;
+        }
+
+        .kurs .fw {
+            display: inline-block;
+            width: 80px;
+            text-align: right;
+        }
+
+        #kurs_byn {
+            font-weight: bold;
+        }
+    </style>
+    <script>
+        var rows = 1; // one row already set
+        var kurs_rur = 4.612;
+        var kurs_kzt = 12.650;
+        var kurs_byn_kzt = (1 / kurs_rur * 100) / 1.05 * (1 / kurs_kzt * 100);
+
+
+        var data = [];
+        data[0] = {};
+
+        function catchEnter(e) {
+            if (e.keyCode == 13) {
+                var row = event.target.parentNode.parentNode;
+                var id = parseInt(row.id.substring(3));
+                var cl = event.target.parentNode.classList[0];
+                console.log(event.target);
+                console.log(event.target.parentNode);
+                console.log(event.target.parentNode.classList[0]);
+                if (id != rows - 1) {
+                    // switch focus
+                    var sel = "#row" + (id + 1) + " > ." + cl;
+                    console.log(sel);
+                    var next_td = document.querySelector(sel);
+                    next_td.childNodes[0].focus();
+                }
+            }
+        }
+
+        function addRow(selector) {
+            var table = document.querySelector(selector);
+            var row = table.insertRow();
+            var template = document.querySelector("#ref > tbody > tr");
+            console.log(template.innerHTML);
+            row.innerHTML = template.innerHTML;
+
+            row.id = "row" + rows;
+            data[rows] = {};
+            // updateRowHandler(row);
+            rows++;
+        }
+
+        function updateRowHandler(row) {
+            //row = el.parentElement.parentElement;
+            /* field = row.getElementsByClassName("name")[0].childNodes[0]; */
+            var id = parseInt(row.id.substring(3));
+
+            var cnt = parseInt(row.getElementsByClassName("count")[0].childNodes[0].value, 10);
+            if (isNaN(cnt)) cnt = 0;
+
+            var value_price_kzt = row.getElementsByClassName("price_kzt")[0].childNodes[0].value;
+            value_price_kzt = value_price_kzt.replace(",", ".");
+            if (value_price_kzt.endsWith(".")) value_price_kzt += "0";
+            var price_kzt = parseFloat(value_price_kzt, 10);
+            if (isNaN(price_kzt)) {
+                price_kzt = 0;
+                row.getElementsByClassName("price_kzt")[0].childNodes[0].value = price_kzt;
+            }
+
+            var value_pv = row.getElementsByClassName("pv")[0].childNodes[0].value.replace(",", ".");
+            var pv = parseFloat(value_pv, 10);
+            if (isNaN(pv)) {
+                pv = 0;
+                row.getElementsByClassName("pv")[0].childNodes[0].value = pv;
+            }
+
+            var sum_kzt = cnt * price_kzt;
+            var sum_pv = cnt * pv;
+
+            var price_byn = price_kzt / kurs_byn_kzt;
+            var sum_byn = price_byn * cnt;
+
+            var delivery_byn = sum_pv * 0.12 * kurs_rur;
+
+            var sum_all = sum_byn + delivery_byn;
+
+
+            row.getElementsByClassName("count")[0].childNodes[0].value = cnt;
+
+            row.getElementsByClassName("sum_kzt")[0].innerText = sum_kzt.toFixed(2);
+            row.getElementsByClassName("sum_pv")[0].innerText = sum_pv.toFixed(2);
+            row.getElementsByClassName("price_byn")[0].innerText = price_byn.toFixed(2);
+            row.getElementsByClassName("sum_byn")[0].innerText = sum_byn.toFixed(2)
+            row.getElementsByClassName("delivery_byn")[0].innerText = delivery_byn.toFixed(2);
+            row.getElementsByClassName("sum_all")[0].innerText = sum_all.toFixed(2);
+
+            data[id].sum_kzt = sum_kzt;
+            data[id].sum_pv = sum_pv;
+            data[id].sum_byn = sum_byn;
+            data[id].delivery_byn = delivery_byn;
+            data[id].sum_all = sum_all;
+
+            updateSum();
+        }
+
+        function updateSum() {
+            var total_kzt = 0;
+            var total_pv = 0;
+            var total_byn = 0;
+            var total_del = 0;
+            var total_all = 0;
+
+            for (var i = 0; i < rows; i++) {
+                total_pv += data[i].sum_pv;
+                total_byn += data[i].sum_byn;
+                total_kzt += data[i].sum_kzt;
+                total_del += data[i].delivery_byn;
+                total_all += data[i].sum_all;
+            }
+
+            document.querySelector("#table_footer > .sum_pv").innerText = total_pv.toFixed(2);
+            document.querySelector("#table_footer > .sum_byn").innerText = total_byn.toFixed(2);
+            document.querySelector("#table_footer > .sum_kzt").innerText = total_kzt.toFixed(2);
+            document.querySelector("#table_footer > .delivery_byn").innerText = total_del.toFixed(2);
+            document.querySelector("#table_footer > .sum_all").innerText = total_all.toFixed(2);
+        }
+
+        function updateAll() {
+            kurs_rur = parseFloat(document.querySelector("#kurs_rur").value.replace(",", "."));
+            if (isNaN(kurs_rur)) kurs_rur = 0;
+            kurs_kzt = parseFloat(document.querySelector("#kurs_kzt").value.replace(",", "."));
+            if (isNaN(kurs_kzt)) kurs_kzt = 0;
+            kurs_byn_kzt = (1 / kurs_rur * 100) / 1.05 * (1 / kurs_kzt * 100);
+
+            document.querySelector("#kurs_byn").innerText = kurs_byn_kzt.toFixed(3);
+
+            for (var i = 0; i < rows; i++) {
+                row = document.querySelector("#row" + i);
+                updateRowHandler(row);
+            }
+            // updateSum();
+        }
+
+        document.addEventListener("DOMContentLoaded", function (event) {
+            for (var i = 0; i < 4; i++) {
+                addRow("#calc_table>tbody");
+            }
+
+            document.querySelector("#kurs_rur").value = kurs_rur.toFixed(3);
+            document.querySelector("#kurs_kzt").value = kurs_kzt.toFixed(3);
+
+            updateAll();
+        });
+
+
+
+    </script>
+</head>
+
+<body>
+    <h1>Калькулятор цены товара</h1>
+    <p>Расчет стоимости товара в Казахстане в беларусских рублях</p>
+
+    <div class="kurs">
+        <span class="fw">100 RUR = </span>
+        <input type="text" id="kurs_rur" oninput="updateAll()">
+        <span>BYN</span>
+        <span class="text"> &mdash; Введите курс BYN к RUR на день расчёта по курсу НБРБ. <a href="https://www.nbrb.by" target="_blank">https://www.nbrb.by</a> </span>
+    </div>
+    <div class="kurs">
+        <span class="fw">100 KZT = </span>
+        <input type="text" id="kurs_kzt" oninput="updateAll()">
+        <span>RUR</span>
+        <span class="text"> &mdash; Введите курс KZT к RUR по курсу ПРОДАЖИ Qiwi. <a href="https://qiwi.com/payment/exchange" target="_blank">https://qiwi.com/payment/exchange</a></span>
+    </div>
+    <div class="kurs">
+        <span class="fw">1 BYN = </span>
+        <span id="kurs_byn"></span>
+        <span> KZT</span>
+    </div>
+    <hr />
+    <table id="calc_table" cellspacing="0">
+        <thead>
+            <tr>
+                <th>артикул</th>
+                <th>название</th>
+                <th>кол-во</th>
+                <th>цена KZT</th>
+                <th>баллы PV</th>
+                <th>сумма KZT</th>
+                <th>сумма PV</th>
+                <th>цена BYN</th>
+                <th>сумма BYN</th>
+                <th>доставка BYN</th>
+                <th class="last">итого</th>
+            </tr>
+        </thead>
+
+        <tbody>
+            <tr id="row0">
+                <td class="id"><input type="text" onkeypress="catchEnter(event)" value="0001"></td>
+                <td class="name"><input type="text" onkeypress="catchEnter(event)" value="LOC, 1л"></td>
+                <td class="count"><input type="text" onkeypress="catchEnter(event)"
+                        oninput="updateRowHandler(this.parentElement.parentElement)" value="1"></td>
+                <td class="price_kzt"><input type="text" onkeypress="catchEnter(event)"
+                        oninput="updateRowHandler(this.parentElement.parentElement)" value="2572"></td>
+                <td class="pv"><input type="text" onkeypress="catchEnter(event)"
+                        oninput="updateRowHandler(this.parentElement.parentElement)" value="4.03"></td>
+                <td class="sum_kzt"></td>
+                <td class="sum_pv"></td>
+                <td class="price_byn"></td>
+                <td class="sum_byn"></td>
+                <td class="delivery_byn"></td>
+                <td class="sum_all"></td>
+            </tr>
+        </tbody>
+
+        <tfoot>
+            <tr id="table_footer">
+                <td class="id"></td>
+                <td class="name">ИТОГО:</td>
+                <td class="count"></td>
+                <td class="price_kzt"></td>
+                <td class="pv"></td>
+                <td class="sum_kzt"></td>
+                <td class="sum_pv"></td>
+                <td class="price_byn"></td>
+                <td class="sum_byn"></td>
+                <td class="delivery_byn"></td>
+                <td class="sum_all"></td>
+            </tr>
+        </tfoot>
+    </table>
+    <button onclick="addRow('#calc_table>tbody'); updateAll()">
+        Добавить строку
+    </button>
+
+    <table id="ref" style="display:none;">
+        <tr>
+            <td class="id"><input type="text" onkeypress="catchEnter(event)"></td>
+            <td class="name"><input type="text" onkeypress="catchEnter(event)"></td>
+            <td class="count"><input type="text" onkeypress="catchEnter(event)"
+                    oninput="updateRowHandler(this.parentElement.parentElement)"></td>
+            <td class="price_kzt"><input type="text" onkeypress="catchEnter(event)"
+                    oninput="updateRowHandler(this.parentElement.parentElement)"></td>
+            <td class="pv"><input type="text" onkeypress="catchEnter(event)"
+                    oninput="updateRowHandler(this.parentElement.parentElement)"></td>
+            <td class="sum_kzt"></td>
+            <td class="sum_pv"></td>
+            <td class="price_byn"></td>
+            <td class="sum_byn"></td>
+            <td class="delivery_byn"></td>
+            <td class="sum_all"></td>
+        </tr>
+    </table>
+</body>
+
+</html>
